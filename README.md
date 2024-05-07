@@ -1,3 +1,4 @@
+
 # PAC-Chernoff Bounds: Understanding Generalization in the Interpolation Regime
 
 ## Abstract
@@ -48,35 +49,3 @@ torchvision`.
     
 **Figure 10.** The rate function of a subset of all the models in Figure 9 is computed here.
     
-
-
-## Estimating the cumulant function and the rate function.
-    
-From the definition of the cummulant function \(\J\),
-$$
-    J_{\bm \theta}(\lambda) = \ln \mathbb{E}_{\nu}\left[e^{\lambda (L(\bm \theta)-\mathbb{E}ll(\bm y,\bm x,\bm\theta))}\right] = \ln \mathbb{E}_{\nu}\left[ p(\bm y|\bm x,\bm \theta)^\lambda\right]  - \mathbb{E}_{\nu}[\ln p(\bm y|\bm x, \bm \theta)^\lambda]\,,
-$$
-it is clear that computing its true value requires access to the true data generation distribution $\nu$. However, in real-world problems, this distribution is unknown and innacesible. 
-
-The Machine Learning community is used to approximate this kind of quantities (such as the expected loss $L(\bm \theta)$) using separate validation datasets $D^{val}$. In fact, due to the large amount of data available in nowadays problems, using this approach is perfectly doable, leading to
-$$
-    J_{\bm \theta}(\lambda) \approx \ln\left(\frac{1}{M}\sum_{(\bm x, \bm y) \in D^{val}} p(\bm y|\bm x, \bm \theta)^\lambda \right) - \frac{1}{M}\sum_{(\bm x, \bm y) \in D^{val}}\ln p(\bm y|\bm x, \bm \theta)^\lambda\,.
-$$
-It is important to notice that the above estimator is biased  due to the first term and Jensen's Inequality. In fact,
-$$
-    \mathbb{E}_{D^{val}}\left[\ln\left(\frac{1}{M}\sum_{(\bm x, \bm y) \in D^{val}} p(\bm y|\bm x, \bm \theta)^\lambda \right)\right] \leq \ln\left( \mathbb{E}_{D^{val}}  \left[\frac{1}{M}\sum_{(\bm x, \bm y) \in D^{val}} p(\bm y|\bm x, \bm \theta)^\lambda \right]\right) = \ln\mathbb{E}_{\nu}\left[ p(\bm y|\bm x,\bm \theta)^\lambda\right]\,.
-$$
-As a result, if the size of $D^{val}$ is not large enough, we might end understimating the cummulant function. 
-
-In regard of computational stability, computing this estimation can be computationally unstable due to the use of probabilities. We encourage the use of log-probabilities and log-sum-exp operations as,
-$$
-    J_{\bm \theta}(\lambda) \approx \ln\left(\sum_{(\bm x, \bm y) \in D^{val}} \mathbb{E}xp (\lambda \ln p(\bm y|\bm x, \bm \theta)) \right) - \ln M - \frac{1}{M}\sum_{(\bm x, \bm y) \in D^{val}}\lambda \ln p(\bm y|\bm x, \bm \theta)\,.
-$$
-From this, it is straight-forward to compute the log-probabilities of the model (for example skipping the softmax layer of a NN), multiply them by $\lambda$ and compute the mean and log-sum-exp of these quantities.
-
-
-Once the cummulant function has being approximated, computing the rate function relies on computing the optimal value of $\lambda$,
-$$
-    \mathcal{I}_{\bm \theta}(a) = \sup_{\lambda > 0} \lambda a - J_{\bm \theta}(\lambda)\,.
-$$
-In this regard, trying to optimize the value of $\lambda$ doing automatic optimization resulted in a very unstable method in our experiments. Thus, the method we are recommending and the one we have employed is using a *binary search* algorithm. Fixed a range in which to optimize lambda $[\lambda_{min}, \lambda_{max}]$, a binary search algorithm has complexity $\mathcal{O}(\log_{2}(\lambda_{max} - \lambda_{min}))$. In fact, if (due to the nature of the problem) the needed value of $\lambda_{max}$ is too large, one might perform the binary search in $[\ln(\lambda_{min}), \ln(\lambda_{max})]$, which has the same complexity but makes it easier to consider larger values of $\lambda$.
