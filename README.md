@@ -33,7 +33,7 @@ With these elements, the architecture of our small InceptionV3 network is
         
 Where the total number of parameters of this model is $1.814.106$.    
     
-**Figure 2.** For this experiments, all Inception models where trained using SGD with momentum $0.9$ and learning rate $0.01$ with exponential decay of $0.95$. All models are trained for $30.000$ iterations of batches of size $200$ or until the train loss is under $0.005$. These settings are selected to ensure that the random label model converges to an interpolator. Random cropping is employed using \texttt{RandomResizeCrop} function of \texttt{torchvision} with scale $(0.8, 1.0)$ and ratio $(0.9, 1.1)$. For $\mathbb{E}ll_2$ Regularization, we multiplicative factor is $0.01$.
+**Figure 2.** For this experiments, all Inception models where trained using SGD with momentum $0.9$ and learning rate $0.01$ with exponential decay of $0.95$. All models are trained for $30.000$ iterations of batches of size $200$ or until the train loss is under $0.005$. These settings are selected to ensure that the random label model converges to an interpolator. Random cropping is employed using `RandomResizeCrop` function of `torchvision` with scale $(0.8, 1.0)$ and ratio $(0.9, 1.1)$. For $\ell_2$ Regularization, we multiplicative factor is $0.01$.
     
 **Figure 3.** For this figure, Standard, L2-Crop and Initial model from Figure~\ref{fig:1} are used. Subsets of size $n=50$ of CIFAR10's test split are used to approximate samples of the data generating distribution and build the histograms.
     
@@ -48,4 +48,12 @@ torchvision`.
 **Figure 9.** For this figure, we used a generalization of LeNet5 (three convolutional layers a two fully connected with ReLu activation and average pooling), where the number of channels of the convolutional layers was parameterized by $k$. Precisely, the first layer had $3$ input and $\lfloor 6k \rceil$ output channels; the second layer $\lfloor 6k \rceil$ input and $\lfloor 16k \rceil$ output channels; and the last layer $\lfloor 16k \rceil$ input and $\lfloor 120k \rceil$ output channels. The set of models are created ranging $k$ from $0.2$ to $4.9$ every $0.1$; raising models from $7k$ parameters to models with $1.2M$ parameters. Each of this models is then trained until the train loss is lower than $0.01$ or until the train loss has not lowered in two epochs (this only happens in the smallest models).
     
 **Figure 10.** The rate function of a subset of all the models in Figure 9 is computed here.
-    
+
+
+## References
+
+Szegedy, C., Vanhoucke, V., Ioffe, S., Shlens, J., and Wojna, Z. (2016). Rethinking the inception architecture for computer vision. In Proceedings of the IEEE conference on computer vision and pattern recognition, pages 2818–2826.
+
+Zhang, C., Bengio, S., Hardt, M., Recht, B., and Vinyals, O. (2017). Understanding deep learning requires rethinking generalization. International Conference on Learning Representations.
+
+Krizhevsky, A., Hinton, G., et al. (2009). Learning multiple layers of features from tiny images. Technical report, Toronto, ON, Canada.
