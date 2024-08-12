@@ -10,7 +10,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib as mpl
-
+random_seed = 2147483647
 
 def non_latex_format():
     """ Set the matplotlib style to non-latex format """
