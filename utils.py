@@ -56,7 +56,7 @@ def createmodel(k):
     """
     torch.manual_seed(random_seed)
     torch.cuda.manual_seed(random_seed)
-    return LeNet5(n_classes, n_channels, k)
+    return LeNet5(10, 3, k)
 
 
 class LeNet5(nn.Module):
