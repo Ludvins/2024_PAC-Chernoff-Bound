@@ -110,9 +110,9 @@ class LeNet5(nn.Module):
             nn.ReLU(),
         )
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=int(120 * k), out_features=int(84 * k)),
+            nn.Linear(in_features=int(120 * k), out_features=int(84)),
             nn.ReLU(),
-            nn.Linear(in_features=int(84 * k), out_features=n_classes),
+            nn.Linear(in_features=int(84), out_features=n_classes),
         )
 
     def forward(self, x):
