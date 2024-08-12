@@ -125,28 +125,12 @@ class LeNet5(nn.Module):
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
-        """ Initialize the EarlyStopper object.
-        
-        Arguments
-        ---------
-        patience : int
-            The number of iterations to wait before stopping training.
-        min_delta : float
-            The minimum delta between the current loss and the best loss.
-        """
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
         self.min_validation_loss = np.inf
 
     def early_stop(self, validation_loss):
-        """ Check if the training should stop.
-        
-        Arguments
-        ---------
-        validation_loss : float
-            The loss on the validation set.
-        """
         if validation_loss < self.min_validation_loss:
             self.min_validation_loss = validation_loss
             self.counter = 0
@@ -157,175 +141,73 @@ class EarlyStopper:
         return False
 
 
-
-def train(model, train_loader, learning_rate, n_iters, device, criterion):
-    """ Train the model using SGD with ExponentialLR scheduler and EarlyStopper
-    
-    Arguments
-    ---------
-    model : torch.nn.Module
-        The model to train
-    train_loader : torch.utils.data.DataLoader
-        The data loader for the training set
-    learning_rate : float
-        The learning rate for the optimizer
-    n_iters : int
-        The number of iterations to train for
-    device : torch.device
-        The device to train on
-    criterion : torch.nn.Module
-        The loss function to optimize    
-    """
-    # Initialize EarlyStopper, optimizer and scheduler
-    es = EarlyStopper(patience=2)
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(
-        optimizer, gamma=0.95
-    )
-    # Initialize data iterator
+def train(model, train_loader):
+    es = EarlyStopper(patience = 2)
+    optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.9)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95, verbose = False)
     data_iter = iter(train_loader)
     iters_per_epoch = len(data_iter)
     aux_loss = 1
-    
-    tq = tqdm(range(n_iters))
+    tq = tqdm(range(N_ITERS))
     for it in tq:
-        # Set model to train mode
-        model.train()
 
-        # Get inputs and targets. If loader is exhausted, reinitialize.
-        try:
-            inputs, target = next(data_iter)
-        except StopIteration:
-            # StopIteration is thrown if dataset ends
-            # reinitialize data loader
-            data_iter = iter(train_loader)
-            inputs, target = next(data_iter)
+            model.train()
 
-        # Move data to device
-        inputs = inputs.to(device)
-        target = target.to(device)
+            try:
+                inputs, target = next(data_iter)
+            except StopIteration:
+                # StopIteration is thrown if dataset ends
+                # reinitialize data loader
+                data_iter = iter(train_loader)
+                inputs, target = next(data_iter)
 
-        # Zero the gradients
-        optimizer.zero_grad()
 
-        # Forward pass
-        logits = model(inputs)  
+            inputs = inputs.to(device)
+            target = target.to(device)
 
-        # Compute the loss
-        loss = criterion(logits, target)  
-        aux_loss += loss.detach().cpu().numpy()
+            optimizer.zero_grad()
 
-        # Log the loss
-        tq.set_postfix(
-            {"Train cce": loss.detach().cpu().numpy(), "Patience": es.counter}
-        )
+            logits = model(inputs) # forward pass
 
-        # Backward pass
-        loss.backward() 
-        # Update the weights
-        optimizer.step()
+            loss = criterion(logits, target) # supervised loss
+            aux_loss += loss.detach().cpu().numpy()
 
-        # Step the scheduler and check for early stopping
-        if it % iters_per_epoch == 0 and it != 0:
-            scheduler.step()
-            if aux_loss / iters_per_epoch < 0.01 or es.early_stop(aux_loss):
+            tq.set_postfix({'Train cce': loss.detach().cpu().numpy(),
+                            "Patience": es.counter})
+
+
+            loss.backward() # computes gradients
+            optimizer.step()
+
+            if it % iters_per_epoch == 0 and it != 0:
+              scheduler.step()
+              if aux_loss/iters_per_epoch < 0.01 or es.early_stop(aux_loss):
                 break
-            aux_loss = 0
+              aux_loss = 0
+
+
 
     return model
-
+    
 def eval(device, model, loader, criterion):
-    """ Evaluate the model on the loader using the criterion.
-    
-    Arguments
-    ---------
-    device : torch.device
-        The device to evaluate on
-    model : torch.nn.Module
-        The model to evaluate
-    loader : torch.utils.data.DataLoader
-        The data loader to evaluate on
-    criterion : torch.nn.Module
-        The loss function to evaluate with
-    """
-    
-    # Initialize counters
     correct = 0
     total = 0
     losses = 0
-    
-    # Set model to evaluation mode
     model.eval()
-    
-    # Iterate over the loader
     with torch.no_grad():
         for data, targets in loader:
-            
-            # Move data to device
             total += targets.size(0)
             data = data.to(device)
             targets = targets.to(device)
-            
-            # Forward pass
             logits = model(data)
-            # Compute the probabilities
             probs = F.softmax(logits, dim=1)
-            # Get the predicted class
             predicted = torch.argmax(probs, 1)
-            # Update the counters
             correct += (predicted == targets).sum().detach().cpu().numpy()
 
-            # Compute the loss
-            loss = criterion(logits, targets) 
-            # Update the loss
+            loss = criterion(logits, targets) # supervised loss
             losses += loss.detach().cpu().numpy() * targets.size(0)
 
-    return correct, total, losses / total
-
-def eval_laplace(device, laplace, loader, eps=1e-7):
-    """ Evaluate the model on the loader using the criterion.
-    
-    Arguments
-    ---------
-    device : torch.device
-        The device to evaluate on
-    model : torch.nn.Module
-        The model to evaluate
-    loader : torch.utils.data.DataLoader
-        The data loader to evaluate on
-    """
-    
-    # Initialize counters
-    total = 0
-    bayes_loss = 0
-    gibbs_loss = 0
-    
-    # Iterate over the loader
-    with torch.no_grad():
-        for data, targets in loader:
-            
-            # Move data to device
-            total += targets.size(0)
-            data = data.to(device)
-            targets = targets.to(device)
-            
-            # To avoid softmax computation
-            laplace.likelihood = "regression"
-            
-            # (n_samples, batch_size, output_shape) Samples are logits
-            logits_samples = laplace.predictive_samples(data, pred_type = "glm", n_samples = 512)
-            # Get probabilities of true classes
-            oh_targets = F.one_hot(targets, num_classes=10)
-            
-            log_prob = torch.sum(logits_samples * oh_targets, -1) \
-                - torch.logsumexp(logits_samples, -1)
-            
-            
-            bayes_loss -= torch.logsumexp(log_prob - torch.log(torch.tensor(512, device=device)), 0).sum()
-            gibbs_loss -= log_prob.mean(0).sum()
-            
-
-    return bayes_loss/total, gibbs_loss/total
+    return correct, total, losses/total
 
 def get_log_p(device, model, loader):
     cce = nn.CrossEntropyLoss(reduction="none")  # supervised classification loss
@@ -340,141 +222,108 @@ def get_log_p(device, model, loader):
     return torch.cat(aux)
 
 
-def get_log_p(device, laplace, loader, eps=1e-7):
-    """ Evaluate the model on the loader using the criterion.
-    
-    Arguments
-    ---------
-    device : torch.device
-        The device to evaluate on
-    model : torch.nn.Module
-        The model to evaluate
-    loader : torch.utils.data.DataLoader
-        The data loader to evaluate on
-    """
-    
-    # Initialize counters
-    total = 0
-    log_p = []
-    
-    # Iterate over the loader
-    with torch.no_grad():
-        for data, targets in loader:
-            
-            # Move data to device
-            total += targets.size(0)
-            data = data.to(device)
-            targets = targets.to(device)
-            
-            # To avoid softmax computation
-            laplace.likelihood = "regression"
-            
-            # (n_samples, batch_size, output_shape) Samples are logits
-            logits_samples = laplace.predictive_samples(data, pred_type = "glm", n_samples = 512)
-            # Get probabilities of true classes
-            oh_targets = F.one_hot(targets, num_classes=10)
-            
-            log_prob = torch.sum(logits_samples * oh_targets, -1) \
-                - torch.logsumexp(logits_samples, -1)
-            
-            log_p.append(log_prob)
-
-    return torch.cat(log_p, 1)
-# #Binary Search for lambdas
-# def rate_function(log_p, s_value, device):
-#   if (s_value<0):
-#     min_lamb=torch.tensor(-10000).to(device)
-#     max_lamb=torch.tensor(0).to(device)
-#   else:
-#     min_lamb=torch.tensor(0).to(device)
-#     max_lamb=torch.tensor(10000).to(device)
-
-#   s_value=torch.tensor(s_value).to(device)
-#   return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
-
 #Binary Search for lambdas
-def rate_function_inv(log_p, s_value, device):
-  min_lamb=torch.tensor(0).to(device)
-  max_lamb=torch.tensor(100000).to(device)
+def rate_function_BS(model, s_value):
+  if (s_value<0):
+    min_lamb=torch.tensor(-10000).to(device)
+    max_lamb=torch.tensor(0).to(device)
+  else:
+    min_lamb=torch.tensor(0).to(device)
+    max_lamb=torch.tensor(10000).to(device)
 
   s_value=torch.tensor(s_value).to(device)
-  inv, _, _ = aux_inv_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.01, device)
-  
-  return inv
+  log_p = get_log_p(device, model, test_loader_batch)
+  return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
+
+def eval_log_p(log_p, lamb, s_value):
+  jensen_val=(torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - lamb *torch.mean(log_p))
+  return lamb*s_value - jensen_val
+
+def aux_rate_function_BinarySearch(log_p, s_value, low, high, epsilon):
+
+  while (high - low) > epsilon:
+      mid = (low + high) / 2
+      print(mid)
+      print(eval_log_p(log_p, low, s_value))
+      print(eval_log_p(log_p, mid, s_value))
+      print(eval_log_p(log_p, high, s_value))
+      print("--")
+      if eval_log_p(log_p, mid, s_value) < eval_log_p(log_p, high, s_value):
+          low = mid
+      else:
+          high = mid
+
+  # Return the midpoint of the final range
+  mid = (low + high) / 2
+  return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
 
 
-def aux_inv_rate_function_TernarySearch(log_p, s_value, low, high, epsilon, device):
+def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
 
-    while (high - low) > epsilon:
-        mid1 = low + (high - low) / 3
-        mid2 = high - (high - low) / 3
-        if eval_inverse_rate_at_lambda(log_p, mid1, s_value, device) < eval_inverse_rate_at_lambda(log_p, mid2, s_value, device):
-            high = mid2
+  while (high - low) > epsilon:
+    mid1 = low + (high - low) / 3
+    mid2 = high - (high - low) / 3
+
+    if eval_log_p(log_p, mid1, s_value) < eval_log_p(log_p, mid2, s_value):
+        low = mid1
+    else:
+        high = mid2
+
+  # Return the midpoint of the final range
+  mid = (low + high) / 2
+  return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
+
+import math
+def aux_rate_function_golden_section_search(log_p, s_value, a, b, epsilon):
+    """
+    Maximizes a univariate function using the golden section search algorithm.
+
+    Parameters:
+        f (function): The function to minimize.
+        a (float): The left endpoint of the initial search interval.
+        b (float): The right endpoint of the initial search interval.
+        tol (float): The error tolerance value.
+
+    Returns:
+        float: The x-value that minimizes the function f.
+    """
+    # Define the golden ratio
+    golden_ratio = (torch.sqrt(torch.tensor(5).to(device)) - 1) / 2
+
+    # Define the initial points
+    c = b - golden_ratio * (b - a)
+    d = a + golden_ratio * (b - a)
+
+    # Loop until the interval is small enough
+    while abs(c - d) > epsilon:
+        # Compute the function values at the new points
+        fc = eval_log_p(log_p, c, s_value)
+        fd = eval_log_p(log_p, d, s_value)
+
+        # Update the interval based on the function values
+        if fc > fd:
+            b = d
+            d = c
+            c = b - golden_ratio * (b - a)
         else:
-            low = mid1
-    # Return the midpoint of the final range
-    mid = (low + high) / 2
-    inv = eval_inverse_rate_at_lambda(log_p, mid, s_value, device)
-    print(mid, inv)
-    return [
-        inv.detach().cpu().numpy(),
-        mid.detach().cpu().numpy(),
-        (inv*mid - s_value).detach().cpu().numpy(),
-    ]
+            a = c
+            c = d
+            d = a + golden_ratio * (b - a)
 
-def eval_inverse_rate_at_lambda(log_p, lamb, s_value, device):
-    jensen_val = (
-        torch.logsumexp(lamb * log_p, -1)
-        - torch.log(torch.tensor(log_p.shape[-1], device=device))
-    ).mean(0)
-
-    # aux_tensor = torch.log(torch.tensor(10/0.05, device=device))
-    # jensen_val = torch.log(torch.exp(jensen_val) + torch.sqrt(0.5*aux_tensor/torch.tensor(log_p.shape[-1], device=device))).mean(0)
-    return (s_value + jensen_val)/lamb - torch.mean(log_p)
+    # Return the midpoint of the final interval
+    mid = (a + b) / 2
+    return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
 
 
-# def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
 
-#     while (high - low) > epsilon:
-#         mid1 = low + (high - low) / 3
-#         mid2 = high - (high - low) / 3
-
-#         if eval_log_p(log_p, mid1, s_value) < eval_log_p(log_p, mid2, s_value):
-#             low = mid1
-#         else:
-#             high = mid2
-
-#     # Return the midpoint of the final range
-#     mid = (low + high) / 2
-#     return [
-#         eval_log_p(log_p, mid, s_value).detach().cpu().numpy(),
-#         mid.detach().cpu().numpy(),
-#         (mid * s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy(),
-#     ]
-
-
-def eval_cummulant(log_p, lambdas, device):
-    # log_p shape (samples, n_data)
-    
-    return np.array(
-        [
-            (
-                torch.logsumexp(lamb * log_p, -1)
-                - torch.log(torch.tensor(log_p.shape[-1], device=device))
-                - torch.mean(lamb * log_p, -1)
-            )
-            .detach()
-            .cpu()
-            .numpy().mean(0)
-            for lamb in lambdas
-        ]
-    )
-
+def eval_jensen(model, lambdas):
+  log_p = get_log_p(device, model, test_loader_batch)
+  return np.array(
+      [
+          (torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - torch.mean(lamb * log_p)).detach().cpu().numpy() for lamb in lambdas
+       ])
 
 def inverse_rate_function(model, lambdas, rate_vals):
-    jensen_vals = eval_cummulant(model, lambdas)
+  jensen_vals = eval_jensen(model, lambdas)
 
-    return np.array([np.min((jensen_vals + rate) / lambdas) for rate in rate_vals])
-
-
-
+  return np.array([ np.min((jensen_vals + rate)/lambdas) for rate in rate_vals])
