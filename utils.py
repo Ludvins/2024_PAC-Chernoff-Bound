@@ -40,7 +40,7 @@ def latex_format():
     matplotlib.rcParams.update({"font.size": fontsize})
 
 
-def createmodel(k, random_seed, n_classes, n_channels):
+def createmodel(k):
     """ Create a LeNet5 model with k times the number of channels. 
     
     Arguments
