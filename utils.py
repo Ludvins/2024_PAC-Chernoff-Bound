@@ -223,7 +223,7 @@ def get_log_p(device, model, loader):
 
 
 #Binary Search for lambdas
-def rate_function_BS(model, s_value):
+def rate_function_BS(device, model, s_value):
   if (s_value<0):
     min_lamb=torch.tensor(-10000).to(device)
     max_lamb=torch.tensor(0).to(device)
@@ -235,95 +235,35 @@ def rate_function_BS(model, s_value):
   log_p = get_log_p(device, model, test_loader_batch)
   return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
 
-def eval_log_p(log_p, lamb, s_value):
+def eval_log_p(device, log_p, lamb, s_value):
   jensen_val=(torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - lamb *torch.mean(log_p))
   return lamb*s_value - jensen_val
 
-def aux_rate_function_BinarySearch(log_p, s_value, low, high, epsilon):
-
-  while (high - low) > epsilon:
-      mid = (low + high) / 2
-      print(mid)
-      print(eval_log_p(log_p, low, s_value))
-      print(eval_log_p(log_p, mid, s_value))
-      print(eval_log_p(log_p, high, s_value))
-      print("--")
-      if eval_log_p(log_p, mid, s_value) < eval_log_p(log_p, high, s_value):
-          low = mid
-      else:
-          high = mid
-
-  # Return the midpoint of the final range
-  mid = (low + high) / 2
-  return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
-
-
-def aux_rate_function_TernarySearch(log_p, s_value, low, high, epsilon):
+def aux_rate_function_TernarySearch(device, log_p, s_value, low, high, epsilon):
 
   while (high - low) > epsilon:
     mid1 = low + (high - low) / 3
     mid2 = high - (high - low) / 3
 
-    if eval_log_p(log_p, mid1, s_value) < eval_log_p(log_p, mid2, s_value):
+    if eval_log_p(device, log_p, mid1, s_value) < eval_log_p(device, log_p, mid2, s_value):
         low = mid1
     else:
         high = mid2
 
   # Return the midpoint of the final range
   mid = (low + high) / 2
-  return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
+  return [eval_log_p(device, log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(device, log_p, mid, s_value)).detach().cpu().numpy()]
 
 import math
-def aux_rate_function_golden_section_search(log_p, s_value, a, b, epsilon):
-    """
-    Maximizes a univariate function using the golden section search algorithm.
 
-    Parameters:
-        f (function): The function to minimize.
-        a (float): The left endpoint of the initial search interval.
-        b (float): The right endpoint of the initial search interval.
-        tol (float): The error tolerance value.
-
-    Returns:
-        float: The x-value that minimizes the function f.
-    """
-    # Define the golden ratio
-    golden_ratio = (torch.sqrt(torch.tensor(5).to(device)) - 1) / 2
-
-    # Define the initial points
-    c = b - golden_ratio * (b - a)
-    d = a + golden_ratio * (b - a)
-
-    # Loop until the interval is small enough
-    while abs(c - d) > epsilon:
-        # Compute the function values at the new points
-        fc = eval_log_p(log_p, c, s_value)
-        fd = eval_log_p(log_p, d, s_value)
-
-        # Update the interval based on the function values
-        if fc > fd:
-            b = d
-            d = c
-            c = b - golden_ratio * (b - a)
-        else:
-            a = c
-            c = d
-            d = a + golden_ratio * (b - a)
-
-    # Return the midpoint of the final interval
-    mid = (a + b) / 2
-    return [eval_log_p(log_p, mid, s_value).detach().cpu().numpy(), mid.detach().cpu().numpy(), (mid*s_value - eval_log_p(log_p, mid, s_value)).detach().cpu().numpy()]
-
-
-
-def eval_jensen(model, lambdas):
+def eval_jensen(device, model, lambdas):
   log_p = get_log_p(device, model, test_loader_batch)
   return np.array(
       [
           (torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - torch.mean(lamb * log_p)).detach().cpu().numpy() for lamb in lambdas
        ])
 
-def inverse_rate_function(model, lambdas, rate_vals):
-  jensen_vals = eval_jensen(model, lambdas)
+def inverse_rate_function(device, model, lambdas, rate_vals):
+  jensen_vals = eval_jensen(deice, model, lambdas)
 
   return np.array([ np.min((jensen_vals + rate)/lambdas) for rate in rate_vals])
