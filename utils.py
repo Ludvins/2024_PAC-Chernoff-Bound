@@ -233,7 +233,7 @@ def rate_function_BS(device, model, s_value, loader):
 
   s_value=torch.tensor(s_value).to(device)
   log_p = get_log_p(device, model, loader)
-  return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
+  return aux_rate_function_TernarySearch(device, log_p, s_value, min_lamb, max_lamb, 0.001)
 
 def eval_log_p(device, log_p, lamb, s_value):
   jensen_val=(torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - lamb *torch.mean(log_p))
