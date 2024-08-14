@@ -141,7 +141,7 @@ class EarlyStopper:
         return False
 
 
-def train(model, train_loader):
+def train(device, model, train_loader, criterion, LEARNING_RATE, N_ITERS):
     es = EarlyStopper(patience = 2)
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.9)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95, verbose = False)
