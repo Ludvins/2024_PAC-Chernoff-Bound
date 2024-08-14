@@ -223,7 +223,7 @@ def get_log_p(device, model, loader):
 
 
 #Binary Search for lambdas
-def rate_function_BS(device, model, s_value):
+def rate_function_BS(device, model, s_value, loader):
   if (s_value<0):
     min_lamb=torch.tensor(-10000).to(device)
     max_lamb=torch.tensor(0).to(device)
@@ -232,7 +232,7 @@ def rate_function_BS(device, model, s_value):
     max_lamb=torch.tensor(10000).to(device)
 
   s_value=torch.tensor(s_value).to(device)
-  log_p = get_log_p(device, model, test_loader_batch)
+  log_p = get_log_p(device, model, loader)
   return aux_rate_function_TernarySearch(log_p, s_value, min_lamb, max_lamb, 0.001)
 
 def eval_log_p(device, log_p, lamb, s_value):
@@ -256,14 +256,14 @@ def aux_rate_function_TernarySearch(device, log_p, s_value, low, high, epsilon):
 
 import math
 
-def eval_jensen(device, model, lambdas):
-  log_p = get_log_p(device, model, test_loader_batch)
+def eval_jensen(device, model, lambdas, loader):
+  log_p = get_log_p(device, model, loader)
   return np.array(
       [
           (torch.logsumexp(lamb * log_p, 0) - torch.log(torch.tensor(log_p.shape[0], device = device)) - torch.mean(lamb * log_p)).detach().cpu().numpy() for lamb in lambdas
        ])
 
 def inverse_rate_function(device, model, lambdas, rate_vals):
-  jensen_vals = eval_jensen(deice, model, lambdas)
+  jensen_vals = eval_jensen(device, model, lambdas)
 
   return np.array([ np.min((jensen_vals + rate)/lambdas) for rate in rate_vals])
