@@ -39,14 +39,14 @@ Where the total number of parameters of this model is $1.814.106$.
 
 **Figure 6.** For this figure, we used a generalization of LeNet5 (three convolutional layers a two fully connected with ReLu activation and average pooling), where the number of channels of the convolutional layers was parameterized by $k$. Precisely, the first layer had $3$ input and $\lfloor 6k \rceil$ output channels; the second layer $\lfloor 6k \rceil$ input and $\lfloor 16k \rceil$ output channels; and the last layer $\lfloor 16k \rceil$ input and $\lfloor 120k \rceil$ output channels. The set of models are created ranging $k$ from $0.2$ to $4.9$ every $0.1$; raising models from $7k$ parameters to models with $1.2M$ parameters. Each of this models is then trained until the train loss is lower than $0.01$ or until the train loss has not lowered in two epochs (this only happens in the smallest models).
     
-**Figure 7.** The rate function of a subset of all the models in Figure 9 is computed here.
+**Figure 7.** The rate function of a subset of all the models in Figure 6 is computed here.
     
 **Figure 9.** The batch size is fixed to $250$ and images are standardize (this was necessary to improve learning in the MLP model). The precise MLP has 3 hidden layers with $512$ units, with a total of $1.735.178$ parameters. All models are trained until the interpolation regime, that is, until the train loss is under $0.015$, which, in the worst case where $20.000$ iterations for the MLP. Inception models are trained using a learning rate of $0.001$ whereas MLP models use $0.1$, both with $0.9$ momentum and $0.95$ exponential decay. Regarding the data, $D_0$ is CIFAR10's test set, $D_1$ is the result of performing random translations of $5\%$ and $D_2$ considers random translations of $5\%$ and rotations of up-to $20\%$. Both transformations are computed using `RandomAffine` function of `
 torchvision`.
     
-**Figure 10.** The model's specification and training setup is the same as in Figure 6. Regarding the data, the random shuffling of the pixels was performed using a random permutation using `Numpy`; the dataset was fully permuted and stores as a new dataset.
+**Figure 10.** The model's specification and training setup is the same as in Figure 9. Regarding the data, the random shuffling of the pixels was performed using a random permutation using `Numpy`; the dataset was fully permuted and stores as a new dataset.
     
-**Figure 11.** The model's specification and training setup is the same as in Figure 6. $D_1$ considers random translations of $5\%$ and rotations of up-to $20\%$ (the same as $D_2$ in Figure 6). Data-augmentation was produced using the same transformations as those that define $D_1$.
+**Figure 11.** The model's specification and training setup is the same as in Figure 9. $D_1$ considers random translations of $5\%$ and rotations of up-to $20\%$ (the same as $D_2$ in Figure 6). Data-augmentation was produced using the same transformations as those that define $D_1$.
 
 
 ## References
